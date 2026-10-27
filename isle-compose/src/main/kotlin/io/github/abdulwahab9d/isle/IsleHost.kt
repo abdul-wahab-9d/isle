@@ -11,7 +11,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.core.view.WindowCompat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -43,10 +47,12 @@ import kotlin.math.min
 fun IsleHost(content: @Composable () -> Unit) {
     val controller = rememberIsleController()
     val context = LocalContext.current
-    remember(context) { applyShortEdgesCutout(context) }
+    remember(context) { applyIslandWindow(context) }
     CompositionLocalProvider(LocalIsleController provides controller) {
         Box(Modifier.fillMaxSize()) {
-            content()
+            Box(Modifier.windowInsetsPadding(WindowInsets.systemBars)) {
+                content()
+            }
             val frame = controller.frame
             val shown = frame.content
             if (shown != null) {
@@ -60,7 +66,6 @@ fun IsleHost(content: @Composable () -> Unit) {
     }
 }
 
-@Suppress("EXTENSION_SHADOWED_BY_MEMBER")
 @Composable
 private fun IsleOverlay(
     controller: IsleController,
@@ -98,6 +103,8 @@ private fun IsleOverlay(
             ).size.height.toFloat()
         }
         ?: 0f
+    val actionHeight = if (content.actionLabel != null) with(density) { 36.dp.toPx() } else 0f
+    val customHeight = if (content.hasCustomBody) with(density) { 72.dp.toPx() } else 0f
 
     key(content.id) {
         val target = if (expanded) 1f else 0f
@@ -114,7 +121,11 @@ private fun IsleOverlay(
             label = "isleExpanded",
         )
         val fraction = if (animationsOff) target else animated
-        val contentHeight = if (expanded || fraction > 0f) descriptionHeight else 0f
+        val contentHeight = if (expanded || fraction > 0f) {
+            descriptionHeight + actionHeight + customHeight
+        } else {
+            0f
+        }
         val layout = layoutIsle(
             LayoutInput(
                 anchorCenterX = anchor.centerXPx,
@@ -140,22 +151,11 @@ private fun IsleOverlay(
             expanded = controller.customBody,
             fill = Color(IsleMetrics.NOTCH_FILL_ARGB.toInt()),
             onDismiss = { controller.dismiss(content.id) },
+            onTap = controller::toggleExpanded,
             modifier = Modifier.fillMaxSize(),
         )
     }
 }
-
-/**
- * The runtime controller exposes these as members. A member outranks an extension,
- * so the getters below are only hit while that class still has no such properties.
- */
-@Suppress("unused")
-private val IsleController.action: (() -> Unit)?
-    get() = null
-
-@Suppress("unused")
-private val IsleController.customBody: (@Composable () -> Unit)?
-    get() = null
 
 private fun animatorScaleIsZero(context: Context): Boolean {
     return runCatching {
@@ -168,10 +168,11 @@ private fun animatorScaleIsZero(context: Context): Boolean {
 }
 
 @SuppressLint("NewApi")
-private fun applyShortEdgesCutout(context: Context) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
+private fun applyIslandWindow(context: Context) {
     runCatching {
         val window = context.findActivity()?.window ?: return
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
         val params = window.attributes
         val mode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         if (params.layoutInDisplayCutoutMode == mode) return
