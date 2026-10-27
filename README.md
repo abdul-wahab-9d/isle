@@ -1,28 +1,103 @@
 # Isle
 
-One capsule, born from the notch. It opens into a card and closes back into the hole.
+Isle is one capsule for an Android app. It is born from the device notch, opens into a card, and closes back into the hole. The host app picks a lifetime. Isle draws inside that app's window only. It is not a system overlay, and it does not move the status-bar clock or battery.
 
-Three lifetimes, so the same library fits more than one app:
+Minimum Android version is 7.0 (`minSdk` 24). Licensed under MIT. See [LICENSE](LICENSE).
 
-- **Flash** — saved, copied, sent. It leaves on its own.
-- **Task** — upload, translate, pay. It stays compact while the work runs, then shows the result.
-- **Session** — recording, timer, navigation. It stays parked until the app dismisses it.
+## Install
 
-A flash borrows the capsule from a live session and hands it back when the flash leaves.
+Add the JitPack repository, then:
 
 ```kotlin
-IsleHost {
-    val isle = LocalIsleController.current
-    Button(onClick = { isle.flash(title = "Copied") }) {
-        Text("Copy")
+dependencies {
+    implementation("com.github.abdul-wahab-9d:isle:0.1.0")
+}
+```
+
+```kotlin
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
     }
 }
 ```
 
-Install from JitPack, once `0.1.0` is tagged:
+The library artifact published from this repo is `io.github.abdulwahab9d:isle:0.1.0`. JitPack serves it as `com.github.abdul-wahab-9d:isle:0.1.0`.
+
+## Three calls
+
+Wrap the screen in `IsleHost`. Read `LocalIsleController.current` from `io.github.abdulwahab9d.isle`. A flash or a task replaces whatever is in front. A session stays underneath and is shown again when the front item leaves. A flash borrows the capsule from a live session and hands it back.
 
 ```kotlin
-implementation("com.github.abdul-wahab-9d:isle:0.1.0")
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import io.github.abdulwahab9d.isle.IsleHost
+import io.github.abdulwahab9d.isle.LocalIsleController
+import io.github.abdulwahab9d.isle.SessionHandle
+import io.github.abdulwahab9d.isle.TaskResult
+import io.github.abdulwahab9d.isle.Tone
+import kotlinx.coroutines.delay
+
+IsleHost {
+    val isle = LocalIsleController.current
+    var recording by remember { mutableStateOf<SessionHandle?>(null) }
+
+    Button(onClick = {
+        isle.flash(
+            title = "Copied",
+            description = "On the clipboard",
+            tone = Tone.Success,
+        )
+    }) {
+        Text("Flash")
+    }
+
+    Button(onClick = {
+        isle.task(title = "Translating") {
+            delay(1_000)
+            TaskResult(title = "Done", tone = Tone.Success)
+        }
+    }) {
+        Text("Task")
+    }
+
+    Button(onClick = {
+        recording = isle.session(
+            id = "recording",
+            title = "Recording",
+            description = "Tap the capsule",
+        )
+    }) {
+        Text("Session")
+    }
+
+    Button(onClick = { recording?.dismiss() }) {
+        Text("Dismiss")
+    }
+}
 ```
 
-Minimum Android version is 7.0 (`minSdk` 24). The behavior contract is [SPEC.md](SPEC.md). MIT licensed.
+- **Flash** leaves on its own. Use it for saved, copied, or sent.
+- **Task** stays compact while the suspend block runs, then shows the `TaskResult`, then leaves. The block is cancelled if the host leaves the composition.
+- **Session** stays parked until `dismiss()`. Tap the capsule to open the card. `id` is how you update or dismiss that same session.
+
+`Tone` is `Loading`, `Success`, `Error`, `Warning`, or `Info`. `AnchorRequest.Notch` is the default. `AnchorRequest.TopCenter` always uses the fallback below.
+
+## Notch fallback
+
+In portrait, a hole near the top center is the anchor. Isle uses a top-center pill instead when:
+
+- the device has no cutout
+- the device is in landscape
+- the hole is in a corner
+
+`IsleHost` asks the activity, on API 28 and newer, to lay out into short-edge cutouts so the capsule can sit on the hole. The drawing is still clipped to the app window.
+
+## Sample
+
+The `sample` module has the three calls and a fourth control that dismisses the recording session.
