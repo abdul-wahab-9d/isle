@@ -74,11 +74,13 @@ fun IsleCapsule(
     expanded: (@Composable () -> Unit)?,
     fill: Color,
     onDismiss: () -> Unit,
+    onTap: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
     val thresholdPx = with(density) { IsleTiming.SWIPE_DISMISS_DP.dp.toPx() }
     val dismiss = rememberUpdatedState(onDismiss)
+    val tap = rememberUpdatedState(onTap)
     val titleColor = Color(titleArgb(tone, actionLabel))
     val tonePaint = Color(toneArgb(tone))
     val blurRadius = layout.pill.radius.finiteOrZero().coerceAtLeast(0f) * IsleMetrics.BLUR_RATIO
@@ -119,6 +121,7 @@ fun IsleCapsule(
             progress = if (body == null) progress else null,
             progressColor = tonePaint,
             swipe = swipe,
+            onTap = { tap.value.invoke() },
         )
         if (body != null) {
             BodyChrome(
@@ -131,6 +134,7 @@ fun IsleCapsule(
                 progressColor = tonePaint,
                 expanded = expanded,
                 swipe = swipe,
+                onTap = { tap.value.invoke() },
             )
         }
     }
@@ -175,13 +179,15 @@ private fun PillChrome(
     progress: Float?,
     progressColor: Color,
     swipe: Modifier,
+    onTap: () -> Unit,
 ) {
     val radius = pill.radius.finiteOrZero().coerceAtLeast(0f)
     Box(
         Modifier
             .placePx(density, pill.x, pill.y, pill.width, pill.height)
             .clip(RoundedCornerShape(with(density) { radius.toDp() }))
-            .then(swipe),
+            .then(swipe)
+            .tapIsland(onTap),
     ) {
         Text(
             text = title,
@@ -227,6 +233,7 @@ private fun BodyChrome(
     progressColor: Color,
     expanded: (@Composable () -> Unit)?,
     swipe: Modifier,
+    onTap: () -> Unit,
 ) {
     val radius = body.radius.finiteOrZero().coerceAtLeast(0f)
     Column(
@@ -234,6 +241,7 @@ private fun BodyChrome(
             .placePx(density, body.x, body.y, body.width, body.height)
             .clip(RoundedCornerShape(with(density) { radius.toDp() }))
             .then(swipe)
+            .tapIsland(onTap)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -383,6 +391,17 @@ private fun Modifier.placePx(density: Density, x: Float, y: Float, width: Float,
     val safeH = height.finiteOrZero().coerceAtLeast(0f)
     return offset { IntOffset(safeX.roundToInt(), safeY.roundToInt()) }
         .size(with(density) { safeW.toDp() }, with(density) { safeH.toDp() })
+}
+
+@Composable
+private fun Modifier.tapIsland(onTap: () -> Unit): Modifier {
+    val interaction = remember { MutableInteractionSource() }
+    return clickable(
+        interactionSource = interaction,
+        indication = null,
+        role = Role.Button,
+        onClick = onTap,
+    )
 }
 
 private fun Modifier.swipeDismiss(thresholdPx: Float, onDismiss: () -> Unit): Modifier =
