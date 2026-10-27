@@ -159,7 +159,7 @@ interface SessionHandle {
 }
 ```
 
-`IsleHost` provides the controller through `LocalIsleController`, draws the host content, and overlays one capsule. `task` runs in a scope cancelled when the host leaves the composition; cancellation dismisses that task id. Custom expanded content and action clicks live on the controller, not in the pure reducer. The reducer sees `hasCustomBody` and `actionLabel` only.
+`IsleController.frame` is an `IsleFrame` (`content`, `expanded`). The runtime updates it. The host only reads it. `IsleHost` provides the controller through `LocalIsleController`, draws the host content, and overlays one capsule. `task` runs in a scope cancelled when the host leaves the composition; cancellation dismisses that task id. Custom expanded content and action clicks live on the controller, not in the pure reducer. The reducer sees `hasCustomBody` and `actionLabel` only.
 
 Tap toggles `SetSessionExpanded` only when the visible slot is the session.
 

@@ -54,6 +54,12 @@ data class IsleState(
     val foreground: Foreground? = null,
 )
 
+/** What the capsule is showing right now. The host reads this and does not touch the slots. */
+data class IsleFrame(
+    val content: Content? = null,
+    val expanded: Boolean = false,
+)
+
 sealed interface IsleEvent {
     data class ShowFlash(
         val content: Content,

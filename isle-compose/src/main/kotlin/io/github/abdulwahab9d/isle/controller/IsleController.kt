@@ -1,8 +1,12 @@
 package io.github.abdulwahab9d.isle.controller
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import io.github.abdulwahab9d.isle.core.AnchorRequest
+import io.github.abdulwahab9d.isle.core.IsleFrame
 import io.github.abdulwahab9d.isle.core.IsleTiming
 import io.github.abdulwahab9d.isle.core.Tone
 
@@ -26,6 +30,9 @@ interface SessionHandle {
 
 /** Stub. The runtime agent wires this to [io.github.abdulwahab9d.isle.runtime.reduce]. */
 class IsleController {
+    var frame: IsleFrame by mutableStateOf(IsleFrame())
+        private set
+
     fun flash(
         title: String,
         description: String? = null,
