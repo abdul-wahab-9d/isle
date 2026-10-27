@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalWindowInfo
 import io.github.abdulwahab9d.isle.anchor.resolveAnchor
 import io.github.abdulwahab9d.isle.core.AnchorFrame
 import io.github.abdulwahab9d.isle.core.AnchorInput
@@ -39,8 +40,12 @@ fun rememberAnchorFrame(request: AnchorRequest): AnchorFrame {
     ) {
         readCutoutRects(view)
     }
-    val widthPx = (configuration.screenWidthDp * density.density).toInt()
-    val heightPx = (configuration.screenHeightDp * density.density).toInt()
+    // Cutout rects are in window pixels. Configuration dp rounds, so a center hole can miss the pill.
+    val container = LocalWindowInfo.current.containerSize
+    val widthPx = container.width.takeIf { it > 0 }
+        ?: (configuration.screenWidthDp * density.density).toInt()
+    val heightPx = container.height.takeIf { it > 0 }
+        ?: (configuration.screenHeightDp * density.density).toInt()
     return resolveAnchor(
         AnchorInput(
             screenWidthPx = widthPx,
