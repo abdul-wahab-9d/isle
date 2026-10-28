@@ -35,7 +35,11 @@ class TaskResult(
     val description: String? = null,
     val tone: Tone,
     val durationMillis: Long = IsleTiming.TASK_RESULT_DURATION_MILLIS,
-)
+    val durationSeconds: Double? = null,
+) {
+    internal fun resolvedDurationMillis(): Long =
+        durationSeconds?.let(IsleTiming::secondsToMillis) ?: durationMillis
+}
 
 interface SessionHandle {
     fun update(
@@ -76,6 +80,7 @@ class IsleController internal constructor(
         description: String? = null,
         tone: Tone = Tone.Success,
         durationMillis: Long = IsleTiming.FLASH_DURATION_MILLIS,
+        durationSeconds: Double? = null,
         actionLabel: String? = null,
         onAction: (() -> Unit)? = null,
         anchor: AnchorRequest = AnchorRequest.Notch,
@@ -103,7 +108,7 @@ class IsleController internal constructor(
                     hasCustomBody = expanded != null,
                     anchor = anchor,
                 ),
-                durationMillis = durationMillis,
+                durationMillis = durationSeconds?.let(IsleTiming::secondsToMillis) ?: durationMillis,
             ),
         )
     }
@@ -288,7 +293,7 @@ class IsleController internal constructor(
                 tone = result.tone,
                 anchor = anchor,
             ),
-            durationMillis = result.durationMillis,
+            durationMillis = result.resolvedDurationMillis(),
         )
 
     private fun failTask(id: String, anchor: AnchorRequest, failure: Exception): IsleEvent.FinishTask =

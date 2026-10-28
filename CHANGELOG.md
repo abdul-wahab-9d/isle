@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+- `flash` and `TaskResult` accept `durationSeconds`. When set, it replaces `durationMillis`.
+
 ## 0.1.1
 
 - Toasts follow Sileo's 6 second clock: open at 150ms, fold back at 4s, leave at 6s.

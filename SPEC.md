@@ -114,6 +114,7 @@ class IsleController {
         description: String? = null,
         tone: Tone = Tone.Success,
         durationMillis: Long = IsleTiming.FLASH_DURATION_MILLIS,
+        durationSeconds: Double? = null,
         actionLabel: String? = null,
         onAction: (() -> Unit)? = null,
         anchor: AnchorRequest = AnchorRequest.Notch,
@@ -146,7 +147,10 @@ class TaskResult(
     val description: String? = null,
     val tone: Tone,
     val durationMillis: Long = IsleTiming.TASK_RESULT_DURATION_MILLIS,
+    val durationSeconds: Double? = null,
 )
+
+When `durationSeconds` is set, it replaces `durationMillis`. Omit both to keep the 6 second default. A session stays until `dismiss()`.
 
 interface SessionHandle {
     fun update(
@@ -206,4 +210,4 @@ Runtime:
 
 ## Publishing
 
-Artifact `com.github.abdul-wahab-9d:isle:0.1.1`. JitPack coordinate `com.github.abdul-wahab-9d:isle:0.1.1`. MIT license. `minSdk` 24. `compileSdk` 36.
+Artifact `com.github.abdul-wahab-9d:isle:0.1.2`. JitPack coordinate `com.github.abdul-wahab-9d:isle:0.1.2`. MIT license. `minSdk` 24. `compileSdk` 36.

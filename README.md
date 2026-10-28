@@ -10,7 +10,7 @@ Add the JitPack repository, then:
 
 ```kotlin
 dependencies {
-    implementation("com.github.abdul-wahab-9d:isle:0.1.1")
+    implementation("com.github.abdul-wahab-9d:isle:0.1.2")
 }
 ```
 
@@ -25,7 +25,7 @@ dependencyResolutionManagement {
 }
 ```
 
-JitPack builds that coordinate from the git tag `0.1.1`. The sample app in `:sample` is only for trying Isle. It is not part of the published artifact.
+JitPack builds that coordinate from the git tag `0.1.2`. The sample app in `:sample` is only for trying Isle. It is not part of the published artifact.
 
 ## Three calls
 
@@ -52,6 +52,7 @@ IsleHost {
             title = "Copied",
             description = "On the clipboard",
             tone = Tone.Success,
+            durationSeconds = 3.0,
         )
     }) {
         Text("Flash")
