@@ -15,12 +15,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -44,7 +47,8 @@ import kotlin.math.min
 fun IsleHost(content: @Composable () -> Unit) {
     val controller = rememberIsleController()
     val context = LocalContext.current
-    remember(context) { applyIslandWindow(context) }
+    val islandVisible = controller.frame.content != null
+    SideEffect { applyIslandWindow(context, islandVisible) }
     CompositionLocalProvider(LocalIsleController provides controller) {
         Box(Modifier.fillMaxSize()) {
             Box(Modifier.windowInsetsPadding(WindowInsets.systemBars)) {
@@ -83,7 +87,7 @@ private fun IsleOverlay(
         softWrap = false,
         maxLines = 1,
     ).size.width.toFloat()
-    val rawPill = titleWidth + with(density) { 48.dp.toPx() }
+    val rawPill = titleWidth + with(density) { 64.dp.toPx() }
     val pillWidth = rawPill.coerceIn(
         min(compactHeight, anchor.compactMaxWidthPx),
         max(compactHeight, anchor.compactMaxWidthPx),
@@ -101,7 +105,7 @@ private fun IsleOverlay(
         }
         ?: 0f
     val actionHeight = if (content.actionLabel != null) with(density) { 36.dp.toPx() } else 0f
-    val customHeight = if (content.hasCustomBody) with(density) { 72.dp.toPx() } else 0f
+    val customHeight = if (content.hasCustomBody) with(density) { 128.dp.toPx() } else 0f
 
     val shell = remember { Animatable(0f) }
     LaunchedEffect(expanded, animationsOff) {
@@ -140,12 +144,14 @@ private fun IsleOverlay(
         onAction = controller.action,
         progress = content.progress,
         expanded = controller.customBody,
-        fill = Color(IsleMetrics.NOTCH_FILL_ARGB.toInt()),
+            fill = NotchFill,
         onDismiss = { controller.dismiss(content.id) },
         onTap = controller::toggleExpanded,
         modifier = Modifier.fillMaxSize(),
     )
 }
+
+private val NotchFill = Color(IsleMetrics.NOTCH_FILL_ARGB)
 
 private fun animatorScaleIsZero(context: Context): Boolean {
     return runCatching {
@@ -158,10 +164,21 @@ private fun animatorScaleIsZero(context: Context): Boolean {
 }
 
 @SuppressLint("NewApi")
-private fun applyIslandWindow(context: Context) {
+private fun applyIslandWindow(context: Context, islandVisible: Boolean) {
     runCatching {
         val window = context.findActivity()?.window ?: return
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isStatusBarContrastEnforced = false
+        }
+        @Suppress("DEPRECATION")
+        window.statusBarColor = if (islandVisible) {
+            NotchFill.toArgb()
+        } else {
+            android.graphics.Color.TRANSPARENT
+        }
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars =
+            !islandVisible
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
         val params = window.attributes
         val mode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES

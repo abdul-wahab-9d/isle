@@ -42,7 +42,8 @@ fun resolveAnchor(input: AnchorInput): AnchorFrame {
     } else {
         mode = AnchorMode.VirtualTopCenter
         centerX = input.screenWidthPx / 2f
-        pillTop = maxOf(0f, input.statusBarBottomPx.toFloat() - compactHeight)
+        // No hole to cover, so the pill starts under the status bar instead of beneath it.
+        pillTop = input.statusBarBottomPx + IsleMetrics.SCREEN_EDGE_DP * density
         compactMaxWidth = maxOf(IsleMetrics.MIN_VIRTUAL_PILL_DP * density, widthCap)
     }
     val cardTop = maxOf(input.statusBarBottomPx.toFloat(), pillTop + compactHeight)

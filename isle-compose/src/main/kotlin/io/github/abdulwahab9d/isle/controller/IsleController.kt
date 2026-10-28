@@ -80,11 +80,17 @@ class IsleController internal constructor(
         onAction: (() -> Unit)? = null,
         anchor: AnchorRequest = AnchorRequest.Notch,
         id: String = newIsleId(),
+        expanded: (@Composable () -> Unit)? = null,
     ) {
         if (actionLabel != null && onAction != null) {
             actions[id] = onAction
         } else {
             actions.remove(id)
+        }
+        if (expanded != null) {
+            customBodies[id] = expanded
+        } else {
+            customBodies.remove(id)
         }
         apply(
             IsleEvent.ShowFlash(
@@ -94,6 +100,7 @@ class IsleController internal constructor(
                     description = description,
                     tone = tone,
                     actionLabel = actionLabel,
+                    hasCustomBody = expanded != null,
                     anchor = anchor,
                 ),
                 durationMillis = durationMillis,

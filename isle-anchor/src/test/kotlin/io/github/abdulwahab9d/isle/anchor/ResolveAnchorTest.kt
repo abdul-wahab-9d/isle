@@ -79,11 +79,11 @@ class ResolveAnchorTest {
     private fun assertVirtual(frame: AnchorFrame) {
         assertEquals(AnchorMode.VirtualTopCenter, frame.mode)
         assertClose("centerX", 200f, frame.centerXPx)
-        assertClose("pillTop", 0f, frame.pillTopPx)
+        assertClose("pillTop", 48f, frame.pillTopPx)
         assertClose("compactMaxWidth", 256f, frame.compactMaxWidthPx)
         assertClose("cardWidth", 350f, frame.cardWidthPx)
         assertClose("cardLeft", 25f, frame.cardLeftPx)
-        assertClose("cardTop", 40f, frame.cardTopPx)
+        assertClose("cardTop", 88f, frame.cardTopPx)
     }
 
     private fun assertClose(field: String, expected: Float, actual: Float) {

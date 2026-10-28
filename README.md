@@ -10,7 +10,7 @@ Add the JitPack repository, then:
 
 ```kotlin
 dependencies {
-    implementation("com.github.abdul-wahab-9d:isle:0.1.0")
+    implementation("com.github.abdul-wahab-9d:isle:0.1.1")
 }
 ```
 
@@ -25,7 +25,7 @@ dependencyResolutionManagement {
 }
 ```
 
-JitPack builds that coordinate from the git tag `0.1.0`. The sample app in `:sample` is only for trying Isle. It is not part of the published artifact.
+JitPack builds that coordinate from the git tag `0.1.1`. The sample app in `:sample` is only for trying Isle. It is not part of the published artifact.
 
 ## Three calls
 

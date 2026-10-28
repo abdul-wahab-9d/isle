@@ -7,9 +7,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,7 +39,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -126,6 +135,7 @@ fun IsleCapsule(
             pill = openLayout.pill,
             density = density,
             title = title,
+            tone = tone,
             titleColor = titleColor,
             progress = if (body == null) progress else null,
             progressColor = tonePaint,
@@ -188,6 +198,7 @@ private fun PillChrome(
     pill: RoundBox,
     density: Density,
     title: String,
+    tone: Tone,
     titleColor: Color,
     progress: Float?,
     progressColor: Color,
@@ -202,27 +213,27 @@ private fun PillChrome(
             .then(swipe)
             .tapIsland(onTap),
     ) {
-        Text(
-            text = title,
+        Row(
             modifier = Modifier
-                .align(Alignment.Center)
-                .padding(
-                    start = 10.dp,
-                    end = 10.dp,
-                    bottom = if (progress != null) 6.dp else 0.dp,
-                )
-                .fillMaxWidth(),
-            color = titleColor,
-            maxLines = 1,
-            softWrap = false,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            style = TextStyle(
-                fontSize = 14.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.Medium,
-            ),
-        )
+                .align(Alignment.CenterStart)
+                .padding(start = 8.dp, end = 12.dp, bottom = if (progress != null) 4.dp else 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ToneBadge(tone = tone, color = titleColor)
+            Text(
+                text = title,
+                color = titleColor,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                style = TextStyle(
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+            )
+        }
         if (progress != null) {
             ThinProgress(
                 progress = progress,
@@ -273,7 +284,7 @@ private fun BodyChrome(
             )
         }
         if (actionLabel != null) {
-            ActionButton(label = actionLabel, onAction = onAction)
+            ActionButton(label = actionLabel, color = progressColor, onAction = onAction)
         }
         Box(
             Modifier
@@ -309,16 +320,101 @@ private fun NeckGap(
 }
 
 @Composable
+private fun ToneBadge(tone: Tone, color: Color) {
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .clip(RoundedCornerShape(50))
+            .background(color.copy(alpha = 0.2f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        when (tone) {
+            Tone.Loading -> LoadingMark(color)
+            else -> Canvas(Modifier.size(12.dp)) {
+                drawToneMark(tone, color)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingMark(color: Color) {
+    val spin = rememberInfiniteTransition(label = "isle-loading")
+    val degrees = spin.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "isle-loading-spin",
+    )
+    Canvas(
+        Modifier
+            .size(12.dp)
+            .graphicsLayer { rotationZ = degrees.value },
+    ) {
+        drawArc(
+            color = color,
+            startAngle = 0f,
+            sweepAngle = 270f,
+            useCenter = false,
+            style = Stroke(width = 1.6.dp.toPx(), cap = StrokeCap.Round),
+        )
+    }
+}
+
+private fun DrawScope.drawToneMark(tone: Tone, color: Color) {
+    val stroke = Stroke(width = 1.7.dp.toPx(), cap = StrokeCap.Round)
+    when (tone) {
+        Tone.Success -> drawPath(
+            Path().apply {
+                moveTo(size.width * 0.18f, size.height * 0.52f)
+                lineTo(size.width * 0.42f, size.height * 0.76f)
+                lineTo(size.width * 0.84f, size.height * 0.28f)
+            },
+            color,
+            style = stroke,
+        )
+        Tone.Error -> {
+            drawLine(color, Offset(size.width * 0.28f, size.height * 0.28f), Offset(size.width * 0.72f, size.height * 0.72f), strokeWidth = stroke.width, cap = StrokeCap.Round)
+            drawLine(color, Offset(size.width * 0.72f, size.height * 0.28f), Offset(size.width * 0.28f, size.height * 0.72f), strokeWidth = stroke.width, cap = StrokeCap.Round)
+        }
+        Tone.Warning -> drawLine(
+            color,
+            Offset(size.width * 0.5f, size.height * 0.18f),
+            Offset(size.width * 0.5f, size.height * 0.68f),
+            strokeWidth = stroke.width,
+            cap = StrokeCap.Round,
+        ).also {
+            drawCircle(color, radius = stroke.width * 0.7f, center = Offset(size.width * 0.5f, size.height * 0.84f))
+        }
+        else -> {
+            drawCircle(color, radius = size.minDimension * 0.36f, style = stroke)
+            drawLine(
+                color,
+                Offset(size.width * 0.5f, size.height * 0.38f),
+                Offset(size.width * 0.5f, size.height * 0.68f),
+                strokeWidth = stroke.width,
+                cap = StrokeCap.Round,
+            )
+        }
+    }
+}
+
+@Composable
 private fun ActionButton(
     label: String,
+    color: Color,
     onAction: (() -> Unit)?,
 ) {
     val interaction = remember { MutableInteractionSource() }
     Text(
         text = label,
+        color = color,
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(Color(IsleMetrics.ACTION_ARGB))
+            .background(color.copy(alpha = 0.18f))
             .clickable(
                 interactionSource = interaction,
                 indication = LocalIndication.current,
@@ -327,7 +423,6 @@ private fun ActionButton(
                 onClick = { onAction?.invoke() },
             )
             .padding(horizontal = 12.dp, vertical = 6.dp),
-        color = Color.White,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),

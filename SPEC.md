@@ -194,7 +194,7 @@ Geometry: center `200`, pillTop `0`, cardTop `40`, cardLeft `25`, cardWidth `350
 
 Runtime:
 
-1. Flash with a description, duration `4000`. Age `0` compact. Age `150` expanded. Age `2500` compact. Age `4000` foreground null.
+1. Flash with a description, duration `6000`. Age `0` compact. Age `150` expanded. Age `4000` compact. Age `6000` foreground null.
 2. Session `s`, then flash `f`. Visible is `f`. After the flash ages out, visible is `s` and the session is compact.
 3. Flash `f1` then flash `f2`. Visible is `f2`.
 4. Session `s1` then session `s2` while a flash is showing. Stored session is `s2`. Flash stays.
@@ -206,4 +206,4 @@ Runtime:
 
 ## Publishing
 
-Artifact `io.github.abdulwahab9d:isle:0.1.0`. JitPack coordinate `com.github.abdul-wahab-9d:isle:0.1.0`. MIT license. `minSdk` 24. `compileSdk` 36.
+Artifact `com.github.abdul-wahab-9d:isle:0.1.1`. JitPack coordinate `com.github.abdul-wahab-9d:isle:0.1.1`. MIT license. `minSdk` 24. `compileSdk` 36.
