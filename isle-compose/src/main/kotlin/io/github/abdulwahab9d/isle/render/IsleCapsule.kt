@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -49,6 +50,8 @@ import androidx.compose.ui.unit.sp
 import io.github.abdulwahab9d.isle.core.Cubic
 import io.github.abdulwahab9d.isle.core.IsleLayout
 import io.github.abdulwahab9d.isle.core.IsleMetrics
+import io.github.abdulwahab9d.isle.core.LayoutInput
+import io.github.abdulwahab9d.isle.geometry.layoutIsle
 import io.github.abdulwahab9d.isle.core.IsleTiming
 import io.github.abdulwahab9d.isle.core.NeckBridge
 import io.github.abdulwahab9d.isle.core.RoundBox
@@ -59,12 +62,14 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Draws one island from [layout]. Coordinates are pixels in the parent, which should be the
- * window overlay. The spring is already applied. Blur, when available, is only this capsule's shape.
+ * Draws one island. [openFraction] is the shell clock, from 0 closed to 1 open.
+ * Callers must read it only from draw or layout, never during composition.
+ * Coordinates are pixels in a window-sized parent. Blur stays on this capsule.
  */
 @Composable
 fun IsleCapsule(
-    layout: IsleLayout,
+    input: LayoutInput,
+    openFraction: () -> Float,
     title: String,
     description: String?,
     tone: Tone,
@@ -81,17 +86,20 @@ fun IsleCapsule(
     val thresholdPx = with(density) { IsleTiming.SWIPE_DISMISS_DP.dp.toPx() }
     val dismiss = rememberUpdatedState(onDismiss)
     val tap = rememberUpdatedState(onTap)
+    val fraction = rememberUpdatedState(openFraction)
     val titleColor = Color(titleArgb(tone, actionLabel))
     val tonePaint = Color(toneArgb(tone))
-    val blurRadius = layout.pill.radius.finiteOrZero().coerceAtLeast(0f) * IsleMetrics.BLUR_RATIO
+    val openLayout = remember(input) { layoutIsle(input.copy(expandedFraction = 1f)) }
+    val blurRadius = openLayout.pill.radius.finiteOrZero().coerceAtLeast(0f) * IsleMetrics.BLUR_RATIO
     val goo = remember(blurRadius) { platformGooOrNull(blurRadius) }
-    val bounds = layout.shapeBounds()
+    val bounds = openLayout.shapeBounds()
     val pad = if (goo != null) blurRadius * 2f else 0f
     val drawLeft = bounds.left - pad
     val drawTop = bounds.top - pad
     val drawWidth = (bounds.right - bounds.left + pad * 2f).finiteOrZero().coerceAtLeast(0f)
     val drawHeight = (bounds.bottom - bounds.top + pad * 2f).finiteOrZero().coerceAtLeast(0f)
     val swipe = Modifier.swipeDismiss(thresholdPx) { dismiss.value.invoke() }
+    val shell = { fraction.value.invoke() }
 
     Box(modifier.fillMaxSize()) {
         CanvasShape(
@@ -101,20 +109,21 @@ fun IsleCapsule(
             width = drawWidth,
             height = drawHeight,
             goo = goo,
-            layout = layout,
+            input = input,
+            shell = shell,
             fill = fill,
         )
-        val body = layout.body
+        val body = openLayout.body
         if (body != null) {
             NeckGap(
-                layout = layout,
+                layout = openLayout,
                 body = body,
                 density = density,
                 swipe = swipe,
             )
         }
         PillChrome(
-            pill = layout.pill,
+            pill = openLayout.pill,
             density = density,
             title = title,
             titleColor = titleColor,
@@ -135,6 +144,7 @@ fun IsleCapsule(
                 expanded = expanded,
                 swipe = swipe,
                 onTap = { tap.value.invoke() },
+                shell = shell,
             )
         }
     }
@@ -148,7 +158,8 @@ private fun CanvasShape(
     width: Float,
     height: Float,
     goo: androidx.compose.ui.graphics.RenderEffect?,
-    layout: IsleLayout,
+    input: LayoutInput,
+    shell: () -> Float,
     fill: Color,
 ) {
     val layer = if (goo != null) {
@@ -159,13 +170,15 @@ private fun CanvasShape(
     } else {
         Modifier
     }
+    val neck = remember { Path() }
     Canvas(
         Modifier
             .placePx(density, left, top, width, height)
             .then(layer),
     ) {
+        val layout = layoutIsle(input.copy(expandedFraction = shell().unitFraction()))
         translate(left = -left.finiteOrZero(), top = -top.finiteOrZero()) {
-            drawCapsule(layout, fill)
+            drawCapsule(layout, fill, neck)
         }
     }
 }
@@ -234,11 +247,16 @@ private fun BodyChrome(
     expanded: (@Composable () -> Unit)?,
     swipe: Modifier,
     onTap: () -> Unit,
+    shell: () -> Float,
 ) {
     val radius = body.radius.finiteOrZero().coerceAtLeast(0f)
     Column(
         Modifier
-            .placePx(density, body.x, body.y, body.width, body.height)
+            .offset {
+                IntOffset(body.x.finiteOrZero().roundToInt(), body.y.finiteOrZero().roundToInt())
+            }
+            .revealHeight(body.width, body.height, shell)
+            .graphicsLayer { alpha = contentFollows(shell()) }
             .clip(RoundedCornerShape(with(density) { radius.toDp() }))
             .then(swipe)
             .tapIsland(onTap)
@@ -341,12 +359,13 @@ private fun ThinProgress(
     }
 }
 
-private fun DrawScope.drawCapsule(layout: IsleLayout, fill: Color) {
+private fun DrawScope.drawCapsule(layout: IsleLayout, fill: Color, scratch: Path) {
     drawRoundBox(layout.pill, fill)
     layout.body?.let { drawRoundBox(it, fill) }
-    val neck = layout.neck ?: return
-    val path = neckPath(layout.pill, neck) ?: return
-    drawPath(path, fill)
+    val bridge = layout.neck ?: return
+    scratch.rewind()
+    if (!scratch.neckFrom(layout.pill, bridge)) return
+    drawPath(scratch, fill)
 }
 
 private fun DrawScope.drawRoundBox(box: RoundBox, fill: Color) {
@@ -362,27 +381,46 @@ private fun DrawScope.drawRoundBox(box: RoundBox, fill: Color) {
 }
 
 /** Starts on the pill bottom corners. Cubic ends are the body top corners. */
-private fun neckPath(pill: RoundBox, neck: NeckBridge): Path? {
+private fun Path.neckFrom(pill: RoundBox, neck: NeckBridge): Boolean {
     val bottom = pill.y + pill.height
     val leftX = pill.x
     val rightX = pill.x + pill.width
-    if (!bottom.isFinite() || !leftX.isFinite() || !rightX.isFinite()) return null
-    if (!neck.left.isFinite() || !neck.right.isFinite()) return null
-    return Path().apply {
-        moveTo(leftX, bottom)
-        cubicTo(neck.left.c1x, neck.left.c1y, neck.left.c2x, neck.left.c2y, neck.left.x, neck.left.y)
-        lineTo(neck.right.x, neck.right.y)
-        cubicTo(
-            neck.right.c2x,
-            neck.right.c2y,
-            neck.right.c1x,
-            neck.right.c1y,
-            rightX,
-            bottom,
-        )
-        close()
-    }
+    if (!bottom.isFinite() || !leftX.isFinite() || !rightX.isFinite()) return false
+    if (!neck.left.isFinite() || !neck.right.isFinite()) return false
+    moveTo(leftX, bottom)
+    cubicTo(neck.left.c1x, neck.left.c1y, neck.left.c2x, neck.left.c2y, neck.left.x, neck.left.y)
+    lineTo(neck.right.x, neck.right.y)
+    cubicTo(
+        neck.right.c2x,
+        neck.right.c2y,
+        neck.right.c1x,
+        neck.right.c1y,
+        rightX,
+        bottom,
+    )
+    close()
+    return true
 }
+
+/** Text waits until the shell has started, then catches the same clock. */
+private fun contentFollows(shell: Float): Float {
+    val start = 0.22f
+    val fraction = shell.unitFraction()
+    if (fraction <= start) return 0f
+    return ((fraction - start) / (1f - start)).coerceIn(0f, 1f)
+}
+
+private fun Modifier.revealHeight(widthPx: Float, heightPx: Float, shell: () -> Float): Modifier =
+    layout { measurable, constraints ->
+        val fraction = shell().unitFraction()
+        val width = widthPx.finiteOrZero().roundToInt().coerceAtLeast(0)
+        val fullHeight = heightPx.finiteOrZero().roundToInt().coerceAtLeast(0)
+        val height = (fullHeight * fraction).roundToInt().coerceIn(0, fullHeight)
+        val placeable = measurable.measure(
+            constraints.copy(minWidth = 0, maxWidth = width, minHeight = 0, maxHeight = height),
+        )
+        layout(width, height) { placeable.place(0, 0) }
+    }
 
 private fun Modifier.placePx(density: Density, x: Float, y: Float, width: Float, height: Float): Modifier {
     val safeX = x.finiteOrZero()

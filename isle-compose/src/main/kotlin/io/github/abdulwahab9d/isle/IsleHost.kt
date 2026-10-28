@@ -7,8 +7,7 @@ import android.content.ContextWrapper
 import android.os.Build
 import android.provider.Settings
 import android.view.WindowManager
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -18,8 +17,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.core.view.WindowCompat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,7 +36,6 @@ import io.github.abdulwahab9d.isle.core.Content
 import io.github.abdulwahab9d.isle.core.IsleMetrics
 import io.github.abdulwahab9d.isle.core.LayoutInput
 import io.github.abdulwahab9d.isle.cutout.rememberAnchorFrame
-import io.github.abdulwahab9d.isle.geometry.layoutIsle
 import io.github.abdulwahab9d.isle.render.IsleCapsule
 import kotlin.math.max
 import kotlin.math.min
@@ -106,55 +103,48 @@ private fun IsleOverlay(
     val actionHeight = if (content.actionLabel != null) with(density) { 36.dp.toPx() } else 0f
     val customHeight = if (content.hasCustomBody) with(density) { 72.dp.toPx() } else 0f
 
-    key(content.id) {
+    val shell = remember { Animatable(0f) }
+    LaunchedEffect(expanded, animationsOff) {
         val target = if (expanded) 1f else 0f
-        val animated by animateFloatAsState(
-            targetValue = target,
-            animationSpec = if (animationsOff) {
-                snap()
-            } else {
+        if (animationsOff) {
+            shell.snapTo(target)
+        } else {
+            shell.animateTo(
+                target,
                 spring(
                     dampingRatio = IsleMetrics.SPRING_DAMPING,
                     stiffness = IsleMetrics.SPRING_STIFFNESS,
-                )
-            },
-            label = "isleExpanded",
-        )
-        val fraction = if (animationsOff) target else animated
-        val contentHeight = if (expanded || fraction > 0f) {
-            descriptionHeight + actionHeight + customHeight
-        } else {
-            0f
+                ),
+            )
         }
-        val layout = layoutIsle(
-            LayoutInput(
-                anchorCenterX = anchor.centerXPx,
-                pillTop = anchor.pillTopPx,
-                cardTop = anchor.cardTopPx,
-                cardLeft = anchor.cardLeftPx,
-                cardWidth = anchor.cardWidthPx,
-                pillWidth = pillWidth,
-                compactHeight = compactHeight,
-                contentHeight = contentHeight,
-                expandedFraction = fraction,
-                roundness = roundness,
-            ),
-        )
-        IsleCapsule(
-            layout = layout,
-            title = content.title,
-            description = content.description,
-            tone = content.tone,
-            actionLabel = content.actionLabel,
-            onAction = controller.action,
-            progress = content.progress,
-            expanded = controller.customBody,
-            fill = Color(IsleMetrics.NOTCH_FILL_ARGB.toInt()),
-            onDismiss = { controller.dismiss(content.id) },
-            onTap = controller::toggleExpanded,
-            modifier = Modifier.fillMaxSize(),
-        )
     }
+    val openFraction = remember { { shell.value } }
+    IsleCapsule(
+        input = LayoutInput(
+            anchorCenterX = anchor.centerXPx,
+            pillTop = anchor.pillTopPx,
+            cardTop = anchor.cardTopPx,
+            cardLeft = anchor.cardLeftPx,
+            cardWidth = anchor.cardWidthPx,
+            pillWidth = pillWidth,
+            compactHeight = compactHeight,
+            contentHeight = descriptionHeight + actionHeight + customHeight,
+            expandedFraction = 1f,
+            roundness = roundness,
+        ),
+        openFraction = openFraction,
+        title = content.title,
+        description = content.description,
+        tone = content.tone,
+        actionLabel = content.actionLabel,
+        onAction = controller.action,
+        progress = content.progress,
+        expanded = controller.customBody,
+        fill = Color(IsleMetrics.NOTCH_FILL_ARGB.toInt()),
+        onDismiss = { controller.dismiss(content.id) },
+        onTap = controller::toggleExpanded,
+        modifier = Modifier.fillMaxSize(),
+    )
 }
 
 private fun animatorScaleIsZero(context: Context): Boolean {
