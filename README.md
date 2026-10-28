@@ -25,7 +25,7 @@ dependencyResolutionManagement {
 }
 ```
 
-The library artifact published from this repo is `io.github.abdulwahab9d:isle:0.1.0`. JitPack serves it as `com.github.abdul-wahab-9d:isle:0.1.0`.
+JitPack builds that coordinate from the git tag `0.1.0`. The sample app in `:sample` is only for trying Isle. It is not part of the published artifact.
 
 ## Three calls
 
